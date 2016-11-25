@@ -1,0 +1,9 @@
+package: github.com/vanveele/kafka-consumer
+import:
+- package: github.com/Shopify/sarama
+- package: github.com/Sirupsen/logrus
+- package: github.com/bsm/sarama-cluster
+- package: github.com/gin-gonic/gin
+- package: github.com/thbkrkr/go-utilz
+  subpackages:
+  - http
