@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"regexp"
 	"strings"
 	"sync"
+
+	log "github.com/Sirupsen/logrus"
 
 	"github.com/Shopify/sarama"
 	"github.com/bsm/sarama-cluster"
@@ -233,6 +234,17 @@ func (s *KafkaConsumer) StartConsuming() error {
 		}
 	}(consumer.Messages(), s.msgChannel)
 
+	// Add return channel here to consume successful message submit
+	/*
+		  go func(return <-chan *Message) {
+			  for message := range return {
+				  m.Offset
+
+					consumer.MarkOffset(, "")
+			  }
+		  }
+	*/
+
 	go func(in <-chan error) {
 		for error := range in {
 			fmt.Printf("Errors: %s\n", error.Error())
@@ -256,7 +268,7 @@ func connectToBroker(config *sarama.Config, seed_brokers []string) (*sarama.Brok
 		broker := sarama.NewBroker(host)
 		err = broker.Open(config)
 		if err != nil {
-			logger.Printf("error connecting to broker: %s %v", host, err)
+			log.Errorf("error connecting to broker: %s %v", host, err)
 		} else {
 			return broker, nil
 		}

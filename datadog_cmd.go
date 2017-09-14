@@ -1,18 +1,12 @@
 package main
 
 import (
-	"os"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/DataDog/datadog-go/statsd"
 	"github.com/buger/jsonparser"
 	"github.com/urfave/cli"
-)
-
-var (
-	stats, _ = statsd.New("127.0.0.1:8125")
 )
 
 func init() {
@@ -30,15 +24,6 @@ func init() {
 				if err != nil {
 					log.Printf("Failed to create consumer: %v", err)
 				}
-
-				log.SetOutput(os.Stdout)
-				if c.Bool("verbose") {
-					log.SetLevel(log.DebugLevel)
-				} else {
-					log.SetLevel(log.WarnLevel)
-				}
-
-				log.Debug(c.String("datadog"))
 
 				stats.Namespace = "techarch.dd_consumer."
 				stats.Tags = append(stats.Tags, "version:0.1.0")
@@ -136,6 +121,7 @@ func init() {
 		})
 }
 
+//DatadogSeriesSender TODO: docs
 func DatadogSeriesSender(c <-chan *Message, apikey, appkey string) {
 	w := NewClient(apikey, appkey)
 	count := 0

@@ -1,27 +1,34 @@
 package main
 
 import (
-	"log"
 	"os"
+	"time"
 
+	log "github.com/Sirupsen/logrus"
+
+	"github.com/DataDog/datadog-go/statsd"
 	"github.com/satori/go.uuid"
 	"github.com/urfave/cli"
 )
 
 var (
-	logger    = log.New(os.Stderr, "", log.LstdFlags)
 	app       = cli.NewApp()
+	stats     *statsd.Client
 	builddate string
 )
 
 var globalFlags = struct {
-	Brokers string
-	Topic   string
-	Offset  string
-	Groupid string
-	Verbose bool
-	StdIn   bool
-	Port    string
+	Brokers  string
+	Topic    string
+	Offset   string
+	Groupid  string
+	Verbose  bool
+	StdIn    bool
+	Port     string
+	Statsd   string
+	Replay   bool
+	TimeFrom time.Time
+	TimeTo   time.Time
 }{}
 
 func main() {
@@ -35,6 +42,12 @@ func main() {
 			Usage:  "Port where the service listens for health check requests",
 			EnvVar: "PORT",
 			Value:  "8080",
+		},
+		cli.StringFlag{
+			Name:   "statsd",
+			Usage:  "target address (addr:port) for metrics",
+			EnvVar: "STATSD",
+			Value:  "localhost:8125",
 		},
 		cli.BoolFlag{
 			Name:   "stdin",
@@ -50,6 +63,21 @@ func main() {
 			Name:   "brokers",
 			Usage:  "The comma seperated list of brokers in the Kafka cluster",
 			EnvVar: "KAFKA_BROKERS",
+		},
+		cli.BoolFlag{
+			Name:   "replay",
+			Usage:  "Replay old messages",
+			EnvVar: "REPLAY",
+		},
+		cli.StringFlag{
+			Name:   "replay-oldest",
+			Usage:  "A timestamp of format time.RFC3339Nano (2017-01-02T01:02:03.123Z) to replay from",
+			EnvVar: "REPLAY_OLDEST",
+		},
+		cli.StringFlag{
+			Name:   "replay-newest",
+			Usage:  "A time.RFC3339Nano formatted string (2017-01-02T01:02:03.123Z) to replay to",
+			EnvVar: "REPLAY_NEWEST",
 		},
 		cli.StringFlag{
 			Name:   "topic",
@@ -77,9 +105,23 @@ func main() {
 		globalFlags.Port = c.String("port")
 		globalFlags.Verbose = c.Bool("verbose")
 		globalFlags.StdIn = c.Bool("stdin")
+		globalFlags.Statsd = c.String("statsd")
+		globalFlags.Replay = c.Bool("replay")
+		if globalFlags.Replay {
+			globalFlags.TimeFrom, _ = time.Parse(time.RFC3339Nano, c.String("replay-oldest"))
+			globalFlags.TimeTo, _ = time.Parse(time.RFC3339Nano, c.String("replay-newest"))
+			stats, _ = statsd.New("127.0.0.1:28125")
+		} else {
+			stats, _ = statsd.New(globalFlags.Statsd)
+		}
+		log.SetOutput(os.Stdout)
+		if c.Bool("verbose") {
+			log.SetLevel(log.DebugLevel)
+		} else {
+			log.SetLevel(log.WarnLevel)
+		}
 
-		logger.Printf("Kafka-consumer starting with options %+v\n", globalFlags)
-
+		log.Debugf("Consumer starting with options %+v\n", globalFlags)
 		return nil
 	}
 
