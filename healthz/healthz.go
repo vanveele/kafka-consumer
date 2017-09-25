@@ -1,10 +1,10 @@
 package healthz
 
-import {
+import (
   "encoding/json"
   "log"
   "net/http"
-}
+)
 
 type Config struct {
   Hostname string
