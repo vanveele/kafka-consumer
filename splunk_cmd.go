@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -67,19 +68,27 @@ func init() {
 							stats.Gauge("queue_length", float64(len(messages)), []string{"stage:consumer"}, 1)
 						}
 						msg.ParseJSON()
+
+						sdID := "splunk::v1@" + c.String("eid")
 						_, err = msg.GetString("$!", "rfc5424-sd")
 						if err != nil {
 							// Rsyslog has not passed mmparsestruc
 							// Likely due to rsyslog7
 							sd, _ := msg.GetString("structured-data")
-							i := parseStructuredData(&sd)
-							index, _ = i["index"]
-							srcType, _ = i["sourcetype"]
-							appID, _ = i["appID"]
+
+							i, err := parseStructuredData(sd)
+							if err != nil {
+								log.Warn("No matching STRUCTURED-DATA")
+								continue
+							}
+
+							index, _ = i[sdID].Params["index"]
+							srcType, _ = i[sdID].Params["sourcetype"]
+							appID, _ = i[sdID].Params["appID"]
 						} else {
-							index, _ = msg.GetString("$!", "rfc5424-sd", "splunk::v1@"+c.String("eid"), "index")
-							srcType, _ = msg.GetString("$!", "rfc5424-sd", "splunk::v1@"+c.String("eid"), "sourcetype")
-							appID, _ = msg.GetString("$!", "rfc5424-sd", "splunk::v1@"+c.String("eid"), "appid")
+							index, _ = msg.GetString("$!", "rfc5424-sd", sdID, "index")
+							srcType, _ = msg.GetString("$!", "rfc5424-sd", sdID, "sourcetype")
+							appID, _ = msg.GetString("$!", "rfc5424-sd", sdID, "appid")
 						}
 						timeStr, _ = msg.GetString("timereported")
 						hostname, _ = msg.GetString("hostname")
@@ -206,4 +215,22 @@ func SplunkSender(c <-chan *hec.Event, address []string, token string, retry int
 		}
 		log.Debug("Sent")
 	}
+}
+
+func SplunkSenderRaw(reader io.ReadSeeker, metadata *Metadata, address []string, token string, retry int) {
+	w := hec.NewCluster(address, token)
+	w.SetHTTPClient(&http.Client{Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}})
+	w.SetKeepAlive(true)
+	w.SetMaxRetry(retry)
+
+	err := w.WriteRaw(reader, metadata)
+	if err != nil {
+		log.Printf("Error from SplunkSenderRaw: %s", err)
+		stats.Incr("senderraw.errors", nil, 1)
+	} else {
+		stats.Incr("senderraw.count", nil, 1)
+	}
+	log.Debug("Sent")
 }

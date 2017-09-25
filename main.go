@@ -33,7 +33,7 @@ var globalFlags = struct {
 
 func main() {
 	app.Name = "kafka-consumer"
-	app.Usage = "kafka-consumer is a tool to tail a kafka stream for json based datadog messages"
+	app.Usage = "kafka-consumer is a tool to tail a kafka stream for json based datadog or splunk messages"
 	app.Version = builddate
 
 	app.Flags = []cli.Flag{

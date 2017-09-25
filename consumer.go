@@ -238,7 +238,7 @@ func (s *KafkaConsumer) StartConsuming() error {
 	/*
 		  go func(return <-chan *Message) {
 			  for message := range return {
-				  m.Offset
+				  m.Offset =
 
 					consumer.MarkOffset(, "")
 			  }
