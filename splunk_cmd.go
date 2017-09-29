@@ -217,7 +217,7 @@ func SplunkSender(c <-chan *hec.Event, address []string, token string, retry int
 	}
 }
 
-func SplunkSenderRaw(reader io.ReadSeeker, metadata *Metadata, address []string, token string, retry int) {
+func SplunkSenderRaw(reader io.ReadSeeker, metadata *hec.EventMetadata, address []string, token string, retry int) {
 	w := hec.NewCluster(address, token)
 	w.SetHTTPClient(&http.Client{Transport: &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
